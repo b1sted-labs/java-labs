@@ -5,6 +5,20 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Scanner;
 
+record ListResult(ArrayList<Integer> arrayList, LinkedList<Integer> linkedList) {
+}
+
+class ElementsCount {
+    // [1; 4]
+    int arrayListElementsInRange;
+    int linkedListElementsInRange;
+
+    public ElementsCount() {
+        this.arrayListElementsInRange = 0;
+        this.linkedListElementsInRange = 0;
+    }
+}
+
 public class SecondPart {
     private static final int FIRST_ARRAY_SIZE = 5;
     private static final int SECOND_ARRAY_SIZE = 7;
@@ -14,67 +28,78 @@ public class SecondPart {
         Scanner scan = new Scanner(System.in);
 
         System.out.println("=== Ввод динамических массивов ===");
-        ArrayList<Integer> firstArrayList = arrayListInput(scan, FIRST_ARRAY_SIZE);
-        ArrayList<Integer> secondArrayList = arrayListInput(scan, SECOND_ARRAY_SIZE);
-        ArrayList<Integer> thirdArrayList = arrayListInput(scan, THIRD_ARRAY_SIZE);
+        ListResult firstLists = listsInput(scan, FIRST_ARRAY_SIZE);
+        ListResult secondLists = listsInput(scan, SECOND_ARRAY_SIZE);
+        ListResult thirdLists = listsInput(scan, THIRD_ARRAY_SIZE);
 
-        System.out.println("=== Ввод связных списков ===");
-        LinkedList<Integer> firstLinkedList = linkedListInput(scan, FIRST_ARRAY_SIZE);
-        LinkedList<Integer> secondLinkedList = linkedListInput(scan, SECOND_ARRAY_SIZE);
-        LinkedList<Integer> thirdLinkedList = linkedListInput(scan, THIRD_ARRAY_SIZE);
+        ListResult builtFirstLists = buildNewLists(firstLists);
+        ListResult builtSecondLists = buildNewLists(secondLists);
+        ListResult builtThirdLists = buildNewLists(thirdLists);
 
-        ArrayList<Integer> formedFirstArrayList = buildNewArrayList(firstArrayList);
-        ArrayList<Integer> formedSecondArrayList = buildNewArrayList(secondArrayList);
-        ArrayList<Integer> formedThirdArrayList = buildNewArrayList(thirdArrayList);
-
-        LinkedList<Integer> formedFirstLinkedList = buildNewLinkedList(firstLinkedList);
-        LinkedList<Integer> formedSecondLinkedList = buildNewLinkedList(secondLinkedList);
-        LinkedList<Integer> formedThirdLinkedList = buildNewLinkedList(thirdLinkedList);
-
-        int firstArrayListElementsInRange = countArrayElementsInRange(formedFirstArrayList);
-        int secondArrayListElementsInRange = countArrayElementsInRange(formedSecondArrayList);
-        int thirdArrayListElementsInRange = countArrayElementsInRange(formedThirdArrayList);
-
-        int firstLinkedListElementsInRange = countArrayElementsInRange(formedFirstLinkedList);
-        int secondLinkedListElementsInRange = countArrayElementsInRange(formedSecondLinkedList);
-        int thirdLinkedListElementsInRange = countArrayElementsInRange(formedThirdLinkedList);
+        ElementsCount elementsInFirstBuiltLists = countElementsInRange(builtFirstLists);
+        ElementsCount elementsInSecondBuiltLists = countElementsInRange(builtSecondLists);
+        ElementsCount elementsInThirdBuiltLists = countElementsInRange(builtThirdLists);
 
         System.out.println("\n=== Вывод массивов/списков ===");
-        System.out.println("Первый массив: ");
-        resultsOutput(firstArrayList, formedFirstArrayList, firstArrayListElementsInRange);
-        resultsOutput(firstLinkedList, formedFirstLinkedList, firstLinkedListElementsInRange);
-
-        System.out.println("Второй массив: ");
-        resultsOutput(secondArrayList, formedSecondArrayList, secondArrayListElementsInRange);
-        resultsOutput(secondLinkedList, formedSecondLinkedList, secondLinkedListElementsInRange);
-
-        System.out.println("Третий массив: ");
-        resultsOutput(thirdArrayList, formedThirdArrayList, thirdArrayListElementsInRange);
-        resultsOutput(thirdLinkedList, formedThirdLinkedList, thirdLinkedListElementsInRange);
+        System.out.println("Первые массивы: ");
+        resultsOutput(firstLists, builtFirstLists, elementsInFirstBuiltLists);
+        resultsOutput(secondLists, builtSecondLists, elementsInSecondBuiltLists);
+        resultsOutput(thirdLists, builtThirdLists, elementsInThirdBuiltLists);
 
         scan.close();
     }
 
-    private static ArrayList<Integer> arrayListInput(Scanner scan, int size) {
-        System.out.println("Введите " + size + " элементов: ");
-        ArrayList<Integer> array = new ArrayList<>(size);
+    private static ListResult listsInput(Scanner scan, int size) {
+        System.out.print("Введите " + size + " элементов: ");
+
+        ArrayList<Integer> arrayList = new ArrayList<>(size);
+        LinkedList<Integer> linkedList = new LinkedList<>();
 
         for (int i = 0; i < size; i++) {
-            array.add(scan.nextInt());
+            int currentNumber = scan.nextInt();
+            arrayList.add(currentNumber);
+            linkedList.add(currentNumber);
         }
 
-        return array;
+        return new ListResult(arrayList, linkedList);
     }
 
-    private static LinkedList<Integer> linkedListInput(Scanner scan, int size) {
-        System.out.println("Введите " + size + " элементов: ");
-        LinkedList<Integer> array = new LinkedList<>();
+    private static ListResult buildNewLists(ListResult initialLists) {
+        ArrayList<Integer> newArrayList = new ArrayList<>(initialLists.arrayList());
+        LinkedList<Integer> newLinkedList = new LinkedList<>(initialLists.linkedList());
 
-        for (int i = 0; i < size; i++) {
-            array.add(scan.nextInt());
+        for (int i : newArrayList) {
+            if (i % 2 == 0) {
+                newArrayList.set(newArrayList.indexOf(i), 0);
+                newLinkedList.set(newLinkedList.indexOf(i), 0);
+            }
         }
 
-        return array;
+        int arraysSize = newArrayList.size();
+        int lastIndex = arraysSize - 1;
+
+        int temp = newArrayList.get(lastIndex);
+
+        newArrayList.set(lastIndex, newArrayList.getFirst());
+        newLinkedList.set(lastIndex, newArrayList.getFirst());
+
+        newArrayList.set(0, temp);
+        newLinkedList.set(0, temp);
+
+        return new ListResult(newArrayList, newLinkedList);
+    }
+
+    private static ElementsCount countElementsInRange(ListResult lists) {
+        ElementsCount elementsCount = new ElementsCount();
+
+        for (int i : lists.arrayList()) {
+            if (i >= 1 && i <= 4) {
+                elementsCount.arrayListElementsInRange++;
+                elementsCount.linkedListElementsInRange++;
+            }
+        }
+
+        return elementsCount;
     }
 
     private static void arrayOutput(List<Integer> array) {
@@ -85,59 +110,20 @@ public class SecondPart {
         System.out.println();
     }
 
-    private static void resultsOutput(List<Integer> initialList, List<Integer> formedList, int elementsInRange) {
-        System.out.print("Исходный массив: ");
-        arrayOutput(initialList);
-        System.out.print("Сформированный массив: ");
-        arrayOutput(formedList);
-        System.out.printf("Количество элементов массива, принадлежащих отрезку [1, 4]: %d\n\n", elementsInRange);
-    }
+    private static void resultsOutput(ListResult listResult, ListResult builtLists, ElementsCount elementsCount) {
+        System.out.println("Исходные массивы: ");
+        System.out.print("ArrayList: ");
+        arrayOutput(listResult.arrayList());
+        System.out.print("LinkedList: ");
+        arrayOutput(listResult.linkedList());
 
-    private static ArrayList<Integer> buildNewArrayList(ArrayList<Integer> initialArray) {
-        int initialArraySize = initialArray.size();
-        ArrayList<Integer> newArray = (ArrayList<Integer>) initialArray.clone();
+        System.out.println("Сформированные массивы: ");
+        System.out.print("ArrayList: ");
+        arrayOutput(builtLists.arrayList());
+        System.out.print("LinkedList: ");
+        arrayOutput(builtLists.linkedList());
 
-        for (int i : newArray) {
-            if (i % 2 == 0) {
-                newArray.set(newArray.indexOf(i), 0);
-            }
-        }
-
-        int lastIndex = initialArraySize - 1;
-        int temp = newArray.get(initialArraySize - 1);
-        newArray.set(lastIndex, newArray.getFirst());
-        newArray.set(0, temp);
-
-        return newArray;
-    }
-
-    private static LinkedList<Integer> buildNewLinkedList(LinkedList<Integer> initialArray) {
-        int initialArraySize = initialArray.size();
-        LinkedList<Integer> newArray = (LinkedList<Integer>) initialArray.clone();
-
-        for (int i : newArray) {
-            if (i % 2 == 0) {
-                newArray.set(newArray.indexOf(i), 0);
-            }
-        }
-
-        int lastIndex = initialArraySize - 1;
-        int temp = newArray.get(initialArraySize - 1);
-        newArray.set(lastIndex, newArray.getFirst());
-        newArray.set(0, temp);
-
-        return newArray;
-    }
-
-    private static int countArrayElementsInRange(List<Integer> array) {
-        int count = 0;
-
-        for (int i : array) {
-            if (i >= 1 && i <= 4) {
-                count++;
-            }
-        }
-
-        return count;
+        System.out.printf("Количество элементов массивов, принадлежащих отрезку [1, 4]: %d|%d\n\n",
+                elementsCount.arrayListElementsInRange, elementsCount.linkedListElementsInRange);
     }
 }
