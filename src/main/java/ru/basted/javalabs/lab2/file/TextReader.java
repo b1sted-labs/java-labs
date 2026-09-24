@@ -19,17 +19,11 @@ public class TextReader {
             }
 
             return readLines;
-        } catch (IOException ex) {
-            throw new IOException(ex);
         }
     }
 
     public static ArrayList<String> readDataFromFileUsingFile(String filePath) throws IOException  {
-        try {
-            List<String> readLines = Files.readAllLines(Path.of(filePath));
-            return new ArrayList<>(readLines);
-        } catch (IOException ex) {
-            throw new IOException(ex);
-        }
+        List<String> readLines = Files.readAllLines(Path.of(filePath));
+        return new ArrayList<>(readLines);
     }
 }
