@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
@@ -41,6 +43,8 @@ public class ClientHandler implements Runnable {
 
                 try {
                     sendMessage("[Server] Команда " + command + " получена!");
+                } catch (IllegalArgumentException ex) {
+                    System.err.println("[ERROR] " + ex.getMessage());
                 } catch (IllegalStateException ex) {
                     System.err.println("[ERROR] " + ex.getMessage());
                     break;
@@ -60,26 +64,28 @@ public class ClientHandler implements Runnable {
         return socketReader.readLine();
     }
 
-    public synchronized void sendMessage(String message) {
-        if (message.isBlank()) {
-            throw new IllegalArgumentException("Текст сообщения не может быть пустым или состоять только из пробелов");
-        }
+    public synchronized void sendMessage(String message) throws IllegalArgumentException, IllegalStateException {
+        sendMessages(List.of(message));
+    }
 
+    public synchronized void sendMessages(List<String> messages) {
         if (socketWriter == null) {
-            throw new IllegalStateException("Не удалось отправить сообщение: поток вывода (output) не инициализирован");
+            throw new IllegalStateException("Не удалось отправить сообщения: поток вывода (output) не инициализирован");
         }
 
         if (socket.isClosed()) {
-            throw new IllegalStateException("Не удалось отправить сообщение: сетевой сокет уже закрыт");
+            throw new IllegalStateException("Не удалось отправить сообщения: сетевой сокет уже закрыт");
         }
 
-        socketWriter.println(message);
+        validateMessages(messages);
+        messages.forEach(message -> socketWriter.println(message));
         socketWriter.println(Protocol.END_OF_RESPONSE);
 
         if (socketWriter.checkError()) {
             throw new IllegalStateException(
-                    "Не удалось отправить сообщение клиенту " + socket.getRemoteSocketAddress()
-                            + ": соединение разорвано или поток вывода поврежден");
+                    "Не удалось отправить ответ клиенту " + socket.getRemoteSocketAddress()
+                            + ": соединение разорвано или поток вывода поврежден"
+            );
         }
     }
 
@@ -96,6 +102,31 @@ public class ClientHandler implements Runnable {
             socket.close();
         } catch (IOException ex) {
             System.err.println("[ERROR] Ошибка при закрытии соединения с клиентом: " + ex.getMessage());
+        }
+    }
+
+    private void validateMessages(List<String> messages) {
+        if (messages == null) {
+            throw new IllegalArgumentException("Список сообщений не может быть null");
+        }
+
+        if (messages.isEmpty()) {
+            throw new IllegalArgumentException("Список сообщений не может быть пустым");
+        }
+
+        for (int i = 0; i < messages.size(); i++) {
+            String message = messages.get(i);
+            if (message == null || message.isBlank()) {
+                Optional<String> callerName = StackWalker.getInstance()
+                        .walk(stackFrameStream -> stackFrameStream
+                                .skip(1)
+                                .dropWhile(frame -> frame.getMethodName().matches("^sendMessage(s)?$"))
+                                .findFirst()
+                                .map(StackWalker.StackFrame::getMethodName)
+                        );
+
+                throw new IllegalArgumentException(callerName + ": Сообщение с индексом " + i + " пустое или состоит только из пробелов");
+            }
         }
     }
 }
