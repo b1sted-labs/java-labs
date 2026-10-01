@@ -5,12 +5,14 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 import ru.basted.javalabs.lab4.common.Protocol;
 
 public class ClientHandler implements Runnable {
     private final Socket socket;
+    private final AtomicBoolean closed = new AtomicBoolean(false);
     private final Consumer<ClientHandler> onDisconnectAction;
 
     private volatile PrintWriter socketWriter;
@@ -82,6 +84,10 @@ public class ClientHandler implements Runnable {
     }
 
     public void closeConnection() {
+        if (!closed.compareAndSet(false, true)) {
+            return;
+        }
+
         if (onDisconnectAction != null) {
             onDisconnectAction.accept(this);
         }
