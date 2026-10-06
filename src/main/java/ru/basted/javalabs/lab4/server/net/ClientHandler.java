@@ -6,22 +6,30 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 import ru.basted.javalabs.lab4.common.Protocol;
+import ru.basted.javalabs.lab4.server.commands.CommandManager;
 
 public class ClientHandler implements Runnable {
-    private final Socket socket;
     private final AtomicBoolean closed = new AtomicBoolean(false);
+
+    private final Socket socket;
     private final Consumer<ClientHandler> onDisconnectAction;
+
+    private final CommandManager commandManager;
 
     private volatile PrintWriter socketWriter;
     private volatile BufferedReader socketReader;
 
-    public ClientHandler(Socket socket, Consumer<ClientHandler> onDisconnectAction) {
+    public ClientHandler(
+            Socket socket,
+            CommandManager commandManager,
+            Consumer<ClientHandler> onDisconnectAction
+    ) {
         this.socket = socket;
+        this.commandManager = commandManager;
         this.onDisconnectAction = onDisconnectAction;
     }
 
@@ -35,17 +43,37 @@ public class ClientHandler implements Runnable {
 
             while (true) {
                 String command = getMessage();
-                if (command == null || command.equals(Protocol.EXIT_COMMAND)) {
+                if (command == null) {
                     break;
+                }
+
+                if (command.isBlank()) {
+                    sendMessage("");
+                    continue;
+                }
+
+                String firstWord = command.trim().split("\\s+", 2)[0];
+                if (firstWord.equalsIgnoreCase(Protocol.EXIT_COMMAND)) {
+                    break;
+                }
+
+                if (command.contains(Protocol.END_OF_RESPONSE)) {
+                    System.out.printf(
+                            "[WARN] Клиент %s отправил ввод со служебной последовательностью протокола, " +
+                                    "команда отклонена%n", socket.getRemoteSocketAddress()
+                    );
+                    sendMessage(
+                            "Ошибка: ввод содержит зарезервированную служебную последовательность '"
+                                    + Protocol.END_OF_RESPONSE + "'. Удалите её и повторите команду."
+                    );
+                    continue;
                 }
 
                 System.out.printf("[DEBUG] Пришла команда от %s: %s%n", socket.getRemoteSocketAddress(), command);
 
                 try {
-                    sendMessage("[Server] Команда " + command + " получена!");
-                } catch (IllegalArgumentException ex) {
-                    System.err.println("[ERROR] " + ex.getMessage());
-                } catch (IllegalStateException ex) {
+                    sendMessages(commandManager.execute(command));
+                } catch (IllegalArgumentException | IllegalStateException ex) {
                     System.err.println("[ERROR] " + ex.getMessage());
                     break;
                 }
@@ -64,7 +92,7 @@ public class ClientHandler implements Runnable {
         return socketReader.readLine();
     }
 
-    public synchronized void sendMessage(String message) throws IllegalArgumentException, IllegalStateException {
+    public void sendMessage(String message) throws IllegalArgumentException, IllegalStateException {
         sendMessages(List.of(message));
     }
 
@@ -78,7 +106,13 @@ public class ClientHandler implements Runnable {
         }
 
         validateMessages(messages);
-        messages.forEach(message -> socketWriter.println(message));
+        messages.forEach(message -> {
+            if (message.isBlank()) {
+                return;
+            }
+
+            socketWriter.println(message);
+        });
         socketWriter.println(Protocol.END_OF_RESPONSE);
 
         if (socketWriter.checkError()) {
@@ -112,21 +146,6 @@ public class ClientHandler implements Runnable {
 
         if (messages.isEmpty()) {
             throw new IllegalArgumentException("Список сообщений не может быть пустым");
-        }
-
-        for (int i = 0; i < messages.size(); i++) {
-            String message = messages.get(i);
-            if (message == null || message.isBlank()) {
-                Optional<String> callerName = StackWalker.getInstance()
-                        .walk(stackFrameStream -> stackFrameStream
-                                .skip(1)
-                                .dropWhile(frame -> frame.getMethodName().matches("^sendMessage(s)?$"))
-                                .findFirst()
-                                .map(StackWalker.StackFrame::getMethodName)
-                        );
-
-                throw new IllegalArgumentException(callerName + ": Сообщение с индексом " + i + " пустое или состоит только из пробелов");
-            }
         }
     }
 }
