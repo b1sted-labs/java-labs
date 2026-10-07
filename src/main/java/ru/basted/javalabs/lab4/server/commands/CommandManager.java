@@ -33,7 +33,7 @@ public class CommandManager {
         Command command = commands.get(args[0].toLowerCase());
         if (command == null) {
             return List.of(
-                    "Ошибка: неизвестная команда «" + args[0] + "». " +
+                    "Ошибка: Неизвестная команда «" + args[0] + "». " +
                             "Введите help, чтобы увидеть список доступных команд."
             );
         }
