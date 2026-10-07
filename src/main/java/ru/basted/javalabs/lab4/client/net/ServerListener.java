@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
 
+import ru.basted.javalabs.lab4.common.Log;
 import ru.basted.javalabs.lab4.common.Protocol;
 
 public class ServerListener implements Runnable {
@@ -26,7 +27,7 @@ public class ServerListener implements Runnable {
             while (true) {
                 String message = socketReader.readLine();
                 if (message == null) {
-                    System.out.println("[INFO] Сервер закрыл соединение.");
+                    Log.info("Сервер закрыл соединение. Клиент завершает работу.");
                     break;
                 }
 
@@ -38,7 +39,7 @@ public class ServerListener implements Runnable {
                 System.out.println(message);
             }
         } catch (IOException ex) {
-            System.err.println("[ERROR] Поток вывода сервера был поврежден или закрыт: " + ex.getMessage());
+            Log.error("Потеряна связь с сервером: не удалось прочитать ответ (" + ex.getMessage() + ").");
         }
     }
 }

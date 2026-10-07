@@ -5,16 +5,17 @@ import java.net.Socket;
 
 import ru.basted.javalabs.lab4.client.net.ServerListener;
 import ru.basted.javalabs.lab4.client.net.ServerSender;
+import ru.basted.javalabs.lab4.common.Log;
 import ru.basted.javalabs.lab4.common.Protocol;
 
 public class ServerClient {
     private static final String HOST = "127.0.0.1";
 
     public static void main(String[] args) {
-        System.out.println("Подключение к серверу...");
+        Thread.currentThread().setName("ServerClient");
 
         try (Socket socket = new Socket(HOST, Protocol.DEFAULT_PORT)) {
-            System.out.println("[INFO] Подключение с сервером установлено.");
+            Log.info("Соединение установлено. Введите help, чтобы увидеть список команд, или exit для выхода.");
 
             registerShutdownHook(socket);
 
@@ -24,32 +25,34 @@ public class ServerClient {
             listenerThread.join();
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
-            System.err.printf("[ERROR] Главный поток был прерван во время ожидания завершения ServerListener: %s%n",
-                    ex.getMessage());
+            Log.error("Клиент был прерван во время ожидания ответов сервера: " + ex.getMessage());
         } catch (IOException ex) {
-            System.err.println("[ERROR] Клиент не смог установить соединение с сервером: " + ex.getMessage());
+            Log.error(
+                    "Не удалось подключиться к серверу " + HOST + ":" + Protocol.DEFAULT_PORT + ":"
+                            + ex.getMessage() + ". Проверьте, что сервер запущен."
+            );
             System.exit(1);
         }
     }
 
     private static void registerShutdownHook(Socket socket) {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            System.out.println("[DEBUG] Запущен процесс завершения работы приложения. Начинаю очистку ресурсов.");
+            Log.info("Завершение работы клиента...");
 
             try {
                 socket.close();
             } catch (IOException ex) {
-                System.err.println("[ERROR] Ошибка при закрытии соединения: " + ex.getMessage());
+                Log.error("Не удалось корректно закрыть соединение с сервером: " + ex.getMessage());
             }
 
-            System.out.println("[DEBUG] Соединение с сервером разорвано. Клиент отключен.");
-        }));
+            Log.info("Соединение с сервером закрыто.");
+        }, "ShutdownHook"));
     }
 
     private static void startSenderThread(Socket socket) {
         ServerSender serverSender = new ServerSender(socket);
 
-        Thread senderThread = new Thread(serverSender, "serversender");
+        Thread senderThread = new Thread(serverSender, "ServerSender");
         senderThread.setDaemon(true);
         senderThread.start();
     }
@@ -57,7 +60,7 @@ public class ServerClient {
     private static Thread startListenerThread(Socket socket) {
         ServerListener serverListener = new ServerListener(socket);
 
-        Thread listenerThread = new Thread(serverListener, "serverlistener");
+        Thread listenerThread = new Thread(serverListener, "ServerListener");
         listenerThread.start();
 
         return listenerThread;
