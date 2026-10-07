@@ -6,15 +6,14 @@ import java.net.Socket;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicInteger;
 
+import ru.basted.javalabs.lab4.common.Log;
 import ru.basted.javalabs.lab4.common.Protocol;
 import ru.basted.javalabs.lab4.server.commands.CommandManager;
 import ru.basted.javalabs.lab4.server.net.ClientHandler;
 import ru.basted.javalabs.lab4.server.schedules.ScheduleRepository;
 
 public class ScheduleServer {
-    private static final AtomicInteger THREAD_COUNTER = new AtomicInteger();
     private static final List<ClientHandler> CLIENT_HANDLERS = new CopyOnWriteArrayList<>();
 
     private static final ScheduleRepository SCHEDULE_REPOSITORY = new ScheduleRepository();
@@ -24,9 +23,8 @@ public class ScheduleServer {
     private static volatile boolean running = true;
 
     public static void main(String[] args) {
-        System.out.println("[DEBUG] Сервер запускается на порту: " + Protocol.DEFAULT_PORT);
-
         Locale.setDefault(Locale.of("ru", "RU"));
+        Thread.currentThread().setName("ScheduleServer");
 
         openConnection();
         registerShutdownHook();
@@ -36,24 +34,28 @@ public class ScheduleServer {
         }
     }
 
+    private static void openConnection() {
+        try {
+            serverSocket = new ServerSocket(Protocol.DEFAULT_PORT);
+            Log.info("Сервер запущен и ожидает подключений на порту " + Protocol.DEFAULT_PORT);
+        } catch (IOException ex) {
+            Log.error(
+                    "Не удалось запустить сервер на порту " + Protocol.DEFAULT_PORT + ": " + ex.getMessage()
+                            + ". Возможно, порт уже занят другим приложением."
+            );
+            System.exit(1);
+        }
+    }
+
     private static void registerShutdownHook() {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            System.out.println("[DEBUG] Получен SIGINT сигнал. Начинаю завершение работы.");
+            Log.info("Получен сигнал завершения (Ctrl+C / SIGTERM). Останавливаю сервер...");
 
             running = false;
             closeConnections();
 
-            System.out.println("[DEBUG] Все соединения закрыты. Сервер остановлен.");
-        }));
-    }
-
-    private static void openConnection() {
-        try {
-            serverSocket = new ServerSocket(Protocol.DEFAULT_PORT);
-        } catch (IOException ex) {
-            System.err.println("[ERROR] Сервер не смог запуститься: " + ex.getMessage());
-            System.exit(1);
-        }
+            Log.info("Все клиентские соединения закрыты. Сервер остановлен.");
+        }, "ShutdownHook"));
     }
 
     private static void acceptNewConnection() {
@@ -67,11 +69,14 @@ public class ScheduleServer {
             );
             CLIENT_HANDLERS.add(clientHandler);
 
-            Thread thread = new Thread(clientHandler, "client-" + THREAD_COUNTER.getAndIncrement());
+            Thread thread = new Thread(
+                    clientHandler,
+                    "ClientHandler-" + String.valueOf(client.getRemoteSocketAddress()).substring(1)
+            );
             thread.start();
         } catch (IOException ex) {
             if (running) {
-                System.err.println("[ERROR] Сервер не смог установить соединение с клиентом: " + ex.getMessage());
+                Log.error("Не удалось принять входящее подключение: " + ex.getMessage());
             }
         }
     }
@@ -84,14 +89,14 @@ public class ScheduleServer {
         try {
             serverSocket.close();
         } catch (IOException ex) {
-            System.err.println("[ERROR] Критическая ошибка ОС при освобождении порта: " + ex.getMessage());
+            Log.error("Не удалось закрыть серверный сокет (порт " + Protocol.DEFAULT_PORT + "): " + ex.getMessage());
         }
 
         CLIENT_HANDLERS.forEach(clientHandler -> {
             try {
-                clientHandler.sendMessage("[Server] Завершение работы. Соединение закрывается.");
+                clientHandler.sendMessage("Завершение работы. Соединение закрывается.");
             } catch (IllegalArgumentException | IllegalStateException ex) {
-                System.err.println("[ERROR] " + ex.getMessage());
+                Log.warn("Не удалось уведомить клиента о завершении работы: " + ex.getMessage());
             }
 
             clientHandler.closeConnection();

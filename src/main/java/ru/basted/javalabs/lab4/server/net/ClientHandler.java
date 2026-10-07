@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
+import ru.basted.javalabs.lab4.common.Log;
 import ru.basted.javalabs.lab4.common.Protocol;
 import ru.basted.javalabs.lab4.server.commands.CommandManager;
 
@@ -35,7 +36,8 @@ public class ClientHandler implements Runnable {
 
     @Override
     public void run() {
-        System.out.printf("[DEBUG] Новый клиент установил соединение с сервером: %s%n", socket.getRemoteSocketAddress());
+        String address = String.valueOf(socket.getRemoteSocketAddress()).substring(1);
+        Log.info("Клиент подключился: " + address);
 
         try {
             socketReader = new BufferedReader(new InputStreamReader(socket.getInputStream(), Protocol.CHARSET));
@@ -58,33 +60,34 @@ public class ClientHandler implements Runnable {
                 }
 
                 if (command.contains(Protocol.END_OF_RESPONSE)) {
-                    System.out.printf(
-                            "[WARN] Клиент %s отправил ввод со служебной последовательностью протокола, " +
-                                    "команда отклонена%n", socket.getRemoteSocketAddress()
-                    );
+                    Log.warn("Клиент отправил ввод со служебной последовательностью протокола, команда отклонена");
+
                     sendMessage(
-                            "Ошибка: ввод содержит зарезервированную служебную последовательность '"
+                            "Ошибка: Ввод содержит зарезервированную служебную последовательность '"
                                     + Protocol.END_OF_RESPONSE + "'. Удалите её и повторите команду."
                     );
                     continue;
                 }
 
-                System.out.printf("[DEBUG] Пришла команда от %s: %s%n", socket.getRemoteSocketAddress(), command);
-
                 try {
                     sendMessages(commandManager.execute(command));
+                    Log.debug(
+                            (command.length() > 199)
+                                    ? "Получена команда: " + command.substring(0, 199) + "..."
+                                    : "Получена команда: " + command
+                    );
                 } catch (IllegalArgumentException | IllegalStateException ex) {
-                    System.err.println("[ERROR] " + ex.getMessage());
+                    Log.error("Не удалось обработать запрос клиента: " + ex.getMessage() + ". Соединение будет закрыто.");
                     break;
                 }
             }
         } catch (IOException ex) {
             if (!socket.isClosed()) {
-                System.err.println("[ERROR] Ошибка при подключении: " + ex.getMessage());
+                Log.error("Ошибка ввода-вывода при обмене данными с клиентом: " + ex.getMessage());
             }
         } finally {
             closeConnection();
-            System.out.printf("[INFO] Клиент отключился: %s%n", socket.getRemoteSocketAddress());
+            Log.info("Клиент отключился: " + address);
         }
     }
 
@@ -98,11 +101,15 @@ public class ClientHandler implements Runnable {
 
     public synchronized void sendMessages(List<String> messages) {
         if (socketWriter == null) {
-            throw new IllegalStateException("Не удалось отправить сообщения: поток вывода (output) не инициализирован");
+            throw new IllegalStateException(
+                    "Не удалось отправить ответ клиенту: поток вывода ещё не инициализирован"
+            );
         }
 
         if (socket.isClosed()) {
-            throw new IllegalStateException("Не удалось отправить сообщения: сетевой сокет уже закрыт");
+            throw new IllegalStateException(
+                    "Не удалось отправить ответ клиенту: соединение уже закрыто"
+            );
         }
 
         validateMessages(messages);
@@ -117,8 +124,7 @@ public class ClientHandler implements Runnable {
 
         if (socketWriter.checkError()) {
             throw new IllegalStateException(
-                    "Не удалось отправить ответ клиенту " + socket.getRemoteSocketAddress()
-                            + ": соединение разорвано или поток вывода поврежден"
+                    "Не удалось доставить ответ клиенту: соединение разорвано или поток вывода поврежден"
             );
         }
     }
@@ -135,17 +141,17 @@ public class ClientHandler implements Runnable {
         try {
             socket.close();
         } catch (IOException ex) {
-            System.err.println("[ERROR] Ошибка при закрытии соединения с клиентом: " + ex.getMessage());
+            Log.error("Не удалось корректно закрыть соединение с клиентом: " + ex.getMessage());
         }
     }
 
     private void validateMessages(List<String> messages) {
         if (messages == null) {
-            throw new IllegalArgumentException("Список сообщений не может быть null");
+            throw new IllegalArgumentException("Нельзя отправить ответ клиенту: список сообщений равен null");
         }
 
         if (messages.isEmpty()) {
-            throw new IllegalArgumentException("Список сообщений не может быть пустым");
+            throw new IllegalArgumentException("Нельзя отправить ответ клиенту: список сообщений пуст");
         }
     }
 }
