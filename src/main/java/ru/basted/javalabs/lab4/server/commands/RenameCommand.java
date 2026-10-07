@@ -23,6 +23,10 @@ public class RenameCommand extends BaseCommand {
             );
         }
 
+        if (args[0].isBlank() || args[1].isBlank()) {
+            throw new IllegalArgumentException("Название группы не может быть пустым");
+        }
+
         return List.of(scheduleRepository.renameGroup(args[0].trim(), args[1].trim()));
     }
 }
