@@ -1,0 +1,10 @@
+<Context>
+    <Resource name="jdbc/TestDB"
+              auth="Container"
+              type="javax.sql.DataSource"
+              maxTotal="20"
+              username="${db.username}"
+              password="${db.password}"
+              driverClassName="${db.driver}"
+              url="${db.url}"/>
+</Context>

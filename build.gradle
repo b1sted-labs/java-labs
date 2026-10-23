@@ -22,6 +22,7 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
     implementation files('lib/mysql-connector-j-26.7.0.jar')
+    implementation 'com.zaxxer:HikariCP:7.0.2'
 }
 
 test {
@@ -31,4 +32,24 @@ test {
 gretty {
     servletContainer = 'tomcat10'
     contextPath = '/'
+}
+
+def dbProps = new Properties()
+def propsFile = file('src/main/resources/ru/basted/javalabs/lab5/database.properties')
+if (propsFile.exists()) {
+    propsFile.withInputStream { dbProps.load(it) }
+}
+
+processResources {
+    inputs.properties(dbProps)
+
+    filesMatching('**/context.xml') {
+        expand(dbProps)
+    }
+}
+
+war {
+    from('build/resources/main/context.xml') {
+        into 'META-INF'
+    }
 }
