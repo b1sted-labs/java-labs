@@ -1,5 +1,7 @@
 plugins {
     id 'java'
+    id 'war'
+    id 'org.gretty' version '5.1.0'
 }
 
 group = 'ru.basted'
@@ -10,6 +12,11 @@ repositories {
 }
 
 dependencies {
+    implementation 'jakarta.servlet.jsp.jstl:jakarta.servlet.jsp.jstl-api:3.0.0'
+    implementation 'org.glassfish.web:jakarta.servlet.jsp.jstl:3.0.1'
+    compileOnly 'jakarta.servlet:jakarta.servlet-api:6.0.0'
+    compileOnly 'jakarta.servlet.jsp:jakarta.servlet.jsp-api:3.1.0'
+
     testImplementation platform('org.junit:junit-bom:6.0.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
@@ -19,4 +26,9 @@ dependencies {
 
 test {
     useJUnitPlatform()
+}
+
+gretty {
+    servletContainer = 'tomcat10'
+    contextPath = '/'
 }
