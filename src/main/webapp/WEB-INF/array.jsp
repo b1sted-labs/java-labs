@@ -7,7 +7,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Сортировка массива</title>
-    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/styles.css">
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/array-styles.css">
 </head>
 <body>
     <h1>Сортировка массива</h1>
@@ -19,7 +19,7 @@
 
     <c:if test="${not empty error}">
         <div class="error-box">
-            ⚠️ Ошибка: ${error}
+            ⚠️ Ошибка: <c:out value="${error}"/>
         </div>
     </c:if>
 

@@ -24,7 +24,7 @@ public class ArrayServlet extends HttpServlet {
             session.removeAttribute("errorMessage");
         }
 
-        request.getRequestDispatcher("/WEB-INF/index.jsp").forward(request, response);
+        request.getRequestDispatcher("/WEB-INF/array.jsp").forward(request, response);
     }
 
     @Override
