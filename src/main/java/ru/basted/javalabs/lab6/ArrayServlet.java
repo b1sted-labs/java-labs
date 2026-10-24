@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.StringTokenizer;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -24,7 +23,7 @@ public class ArrayServlet extends HttpServlet {
             session.removeAttribute("errorMessage");
         }
 
-        request.getRequestDispatcher("/WEB-INF/index.jsp").forward(request, response);
+        request.getRequestDispatcher("/WEB-INF/array.jsp").forward(request, response);
     }
 
     @Override
@@ -51,25 +50,31 @@ public class ArrayServlet extends HttpServlet {
         response.sendRedirect("servlet");
     }
 
-    private List<Integer> parseString(String string) {
-        if (string.contains(" ") && !string.contains(", ") ) {
+    private List<Integer> parseString(String input) {
+        if (input.contains(" ") && !input.contains(", ") ) {
             throw new IllegalArgumentException(
-                    "Элементы массива должны быть отделены друг от друга запятой. Было передано: " + string +
-                            ". Ожидалось (пример корректного ввода): '1, 2, 3'"
+                    "Элементы массива должны быть отделены друг от друга запятой. Было передано: [" + input +
+                            "]. Ожидалось (пример корректного ввода): [1, 2, 3]"
             );
         }
 
-        StringTokenizer stringTokenizer = new StringTokenizer(string, ", ");
+        String[] tokens = input.split(", ", -1);
 
         List<Integer> initialArray = new ArrayList<>();
-        while (stringTokenizer.hasMoreTokens()) {
-            String token = stringTokenizer.nextToken();
+        for (String token : tokens) {
+            if (token.isBlank()) {
+                throw new IllegalArgumentException("Два разделителя подряд или пустой элемент!");
+            }
+
+            if (token.contains(" ") || token.trim().length() != token.length()) {
+                throw new IllegalArgumentException("Токен '" + token + "' содержит пробелы или не разделен запятой!");
+            }
 
             try {
                 initialArray.add(Integer.parseInt(token));
             } catch (NumberFormatException ex) {
                 throw new IllegalArgumentException(
-                        "В переданном массиве [" + string + "] содержится не целое число: '" + token + "'"
+                        "В переданном массиве [" + input + "] содержится не целое число: '" + token + "'"
                 );
             }
         }
