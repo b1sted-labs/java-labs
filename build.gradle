@@ -33,23 +33,3 @@ gretty {
     servletContainer = 'tomcat10'
     contextPath = '/'
 }
-
-def dbProps = new Properties()
-def propsFile = file('src/main/resources/ru/basted/javalabs/lab5/database.properties')
-if (propsFile.exists()) {
-    propsFile.withInputStream { dbProps.load(it) }
-}
-
-processResources {
-    inputs.properties(dbProps)
-
-    filesMatching('**/context.xml') {
-        expand(dbProps)
-    }
-}
-
-war {
-    from('build/resources/main/context.xml') {
-        into 'META-INF'
-    }
-}
